@@ -20,19 +20,25 @@ import android.annotation.TargetApi;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTimestamp;
+import android.media.MediaCodecInfo;
+import android.media.MediaFormat;
 import android.os.ConditionVariable;
 import android.os.SystemClock;
 import android.util.Log;
+
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.PlaybackParameters;
 import com.google.android.exoplayer2.util.Assertions;
 import com.google.android.exoplayer2.util.MimeTypes;
 import com.google.android.exoplayer2.util.Util;
+
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.LinkedList;
+
+import static android.R.attr.offset;
 
 /**
  * Plays audio data. The implementation delegates to an {@link android.media.AudioTrack} and handles
@@ -347,6 +353,8 @@ public final class AudioTrack {
   private boolean tunneling;
   private boolean hasData;
   private long lastFeedElapsedRealtimeMs;
+  private MediaFormat mediaFormat;
+  private RecordListener recordListener;
 
   /**
    * @param audioCapabilities The audio capabilities for playback on this device. May be null if the
@@ -488,6 +496,14 @@ public final class AudioTrack {
   public void configure(String mimeType, int channelCount, int sampleRate,
       @C.PcmEncoding int pcmEncoding, int specifiedBufferSize, int[] outputChannels)
       throws ConfigurationException {
+
+    mediaFormat = new MediaFormat();
+    mediaFormat.setString(MediaFormat.KEY_MIME, mimeType);
+    mediaFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
+    mediaFormat.setInteger(MediaFormat.KEY_SAMPLE_RATE, sampleRate);
+    mediaFormat.setInteger(MediaFormat.KEY_CHANNEL_COUNT, channelCount);
+    mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, pcmEncoding);
+
     boolean passthrough = !MimeTypes.AUDIO_RAW.equals(mimeType);
     @C.Encoding int encoding = passthrough ? getEncodingForMimeType(mimeType) : pcmEncoding;
     boolean flush = false;
@@ -767,7 +783,7 @@ public final class AudioTrack {
         long expectedPresentationTimeUs = startMediaTimeUs
             + framesToDurationUs(getSubmittedFrames());
         if (startMediaTimeState == START_IN_SYNC
-            && Math.abs(expectedPresentationTimeUs - presentationTimeUs) > 200000) {
+            && Math.abs(expectedPresentationTimeUs - presentationTimeUs) > 2000000) {
           Log.e(TAG, "Discontinuity detected [expected " + expectedPresentationTimeUs + ", got "
               + presentationTimeUs + "]");
           startMediaTimeState = START_NEED_SYNC;
@@ -790,6 +806,9 @@ public final class AudioTrack {
       inputBuffer = buffer;
     }
 
+    if (recordListener != null) {
+//      recordListener.record(buffer, offset, size, presentationTimeUs, bytesWritten);
+    }
     if (passthrough) {
       // Passthrough buffers are not processed.
       writeBuffer(inputBuffer, presentationTimeUs);
@@ -1507,6 +1526,19 @@ public final class AudioTrack {
   @SuppressWarnings("deprecation")
   private static void setVolumeInternalV3(android.media.AudioTrack audioTrack, float volume) {
     audioTrack.setStereoVolume(volume, volume);
+  }
+
+  public MediaFormat getMediaFormat() {
+    return mediaFormat;
+  }
+  public RecordListener getRecordListener() {
+    return recordListener;
+  }
+  public void setRecordListener(RecordListener recordListener) {
+    this.recordListener = recordListener;
+  }
+  public interface RecordListener {
+    void record(ByteBuffer buffer, int offset, int size, long presentationTimeUs, int bytesWritten);
   }
 
   /**
