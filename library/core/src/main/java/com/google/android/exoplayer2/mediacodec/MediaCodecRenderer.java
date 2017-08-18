@@ -210,6 +210,8 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
 
   protected DecoderCounters decoderCounters;
 
+  private ReadListener readListener;
+
   /**
    * @param trackType The track type that the renderer handles. One of the {@code C.TRACK_TYPE_*}
    *     constants defined in {@link C}.
@@ -638,6 +640,13 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
       }
       adaptiveReconfigurationBytes = buffer.data.position();
       result = readSource(formatHolder, buffer, false);
+      try {
+        if (readListener != null) {
+          readListener.onRead(buffer, formatHolder, result);
+        }
+      } catch (Exception ex) {
+        ex.printStackTrace();
+      }
     }
 
     if (result == C.RESULT_NOTHING_READ) {
@@ -1223,6 +1232,20 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
   private static boolean codecNeedsMonoChannelCountWorkaround(String name, Format format) {
     return Util.SDK_INT <= 18 && format.channelCount == 1
         && "OMX.MTK.AUDIO.DECODER.MP3".equals(name);
+  }
+
+  public interface ReadListener {
+    void onRead(DecoderInputBuffer buffer, FormatHolder formatHolder, int result);
+
+    void onEndOfStream();
+  }
+
+  public ReadListener getReadListener() {
+    return readListener;
+  }
+
+  public void setReadListener(ReadListener readListener) {
+    this.readListener = readListener;
   }
 
 }
