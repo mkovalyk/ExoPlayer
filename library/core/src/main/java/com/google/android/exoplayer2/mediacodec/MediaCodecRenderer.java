@@ -642,7 +642,7 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
       result = readSource(formatHolder, buffer, false);
       try {
         if (readListener != null) {
-          readListener.onRead(buffer, formatHolder, result);
+          readListener.onRead(buffer, formatHolder);
         }
       } catch (Exception ex) {
         ex.printStackTrace();
@@ -1234,8 +1234,11 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
         && "OMX.MTK.AUDIO.DECODER.MP3".equals(name);
   }
 
+  public int getTrackCount() {
+    return 1; // TODO rewrite to real tracks count
+  }
   public interface ReadListener {
-    void onRead(DecoderInputBuffer buffer, FormatHolder formatHolder, int result);
+    void onRead(DecoderInputBuffer buffer, FormatHolder formatHolder);
 
     void onEndOfStream();
   }
