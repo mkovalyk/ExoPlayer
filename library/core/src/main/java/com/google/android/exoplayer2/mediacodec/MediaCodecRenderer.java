@@ -640,13 +640,6 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
       }
       adaptiveReconfigurationBytes = buffer.data.position();
       result = readSource(formatHolder, buffer, false);
-      try {
-        if (readListener != null) {
-          readListener.onRead(buffer, formatHolder);
-        }
-      } catch (Exception ex) {
-        ex.printStackTrace();
-      }
     }
 
     if (result == C.RESULT_NOTHING_READ) {
@@ -719,6 +712,13 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
       }
 
       buffer.flip();
+        try {
+          if (readListener != null) {
+            readListener.onRead(buffer, formatHolder);
+           }
+        } catch (Exception ex) {
+          ex.printStackTrace();
+        }
       onQueueInputBuffer(buffer);
 
       if (bufferEncrypted) {
