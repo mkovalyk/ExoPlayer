@@ -25,6 +25,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.util.Log;
+
 import com.google.android.exoplayer2.BaseRenderer;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlaybackException;
@@ -43,6 +44,7 @@ import com.google.android.exoplayer2.util.Assertions;
 import com.google.android.exoplayer2.util.NalUnitUtil;
 import com.google.android.exoplayer2.util.TraceUtil;
 import com.google.android.exoplayer2.util.Util;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -301,6 +303,27 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
   protected abstract void configureCodec(MediaCodecInfo codecInfo, MediaCodec codec, Format format,
       MediaCrypto crypto) throws DecoderQueryException;
 
+  private int selectedItem;
+  private List<MediaCodecInfo> codecs;
+
+@Nullable
+  protected MediaCodecInfo getNextDecoderInfo() throws DecoderQueryException {
+  Log.d(TAG, "getNextDecoderInfo: ");
+    if (selectedItem > codecs.size())
+      return null;
+    return codecs.get(selectedItem++);
+  }
+
+  private List<MediaCodecInfo> getList(String mimeType) {
+    Log.d(TAG, "getList: " + mimeType);
+    try {
+      return MediaCodecUtil.getDecoderInfos(mimeType, false);
+    } catch (DecoderQueryException e) {
+      e.printStackTrace();
+    }
+    return new ArrayList<>();
+  }
+
   @SuppressWarnings("deprecation")
   protected final void maybeInitCodec() throws ExoPlaybackException {
     if (codec != null || format == null) {
@@ -325,71 +348,93 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
       wrappedMediaCrypto = mediaCrypto.getWrappedMediaCrypto();
       drmSessionRequiresSecureDecoder = mediaCrypto.requiresSecureDecoderComponent(mimeType);
     }
-
-    if (codecInfo == null) {
-      try {
-        codecInfo = getDecoderInfo(mediaCodecSelector, format, drmSessionRequiresSecureDecoder);
-        if (codecInfo == null && drmSessionRequiresSecureDecoder) {
-          // The drm session indicates that a secure decoder is required, but the device does not
-          // have one. Assuming that supportsFormat indicated support for the media being played, we
-          // know that it does not require a secure output path. Most CDM implementations allow
-          // playback to proceed with a non-secure decoder in this case, so we try our luck.
-          codecInfo = getDecoderInfo(mediaCodecSelector, format, false);
-          if (codecInfo != null) {
-            Log.w(TAG, "Drm session requires secure decoder for " + mimeType + ", but "
-                + "no secure decoder available. Trying to proceed with " + codecInfo.name + ".");
-          }
-        }
-      } catch (DecoderQueryException e) {
-        throwDecoderInitError(new DecoderInitializationException(format, e,
-            drmSessionRequiresSecureDecoder, DecoderInitializationException.DECODER_QUERY_ERROR));
-      }
-
+    if (codecs == null) {
+      codecs = getList(mimeType);
+      Log.d(TAG, "maybeInitCodec: Codecs:" + codecs.size());
+    }
+    while (selectedItem < codecs.size()) {
       if (codecInfo == null) {
-        throwDecoderInitError(new DecoderInitializationException(format, null,
-            drmSessionRequiresSecureDecoder,
-            DecoderInitializationException.NO_SUITABLE_DECODER_ERROR));
+        try {
+          codecInfo = getNextDecoderInfo();
+          Log.d(TAG, "maybeInitCodec: " + codecInfo.name);
+//        codecInfo = getDecoderInfo(mediaCodecSelector, format, drmSessionRequiresSecureDecoder);
+          if (codecInfo == null && drmSessionRequiresSecureDecoder) {
+            // The drm session indicates that a secure decoder is required, but the device does not
+            // have one. Assuming that supportsFormat indicated support for the media being played, we
+            // know that it does not require a secure output path. Most CDM implementations allow
+            // playback to proceed with a non-secure decoder in this case, so we try our luck.
+            codecInfo = getDecoderInfo(mediaCodecSelector, format, false);
+            if (codecInfo != null) {
+              Log.w(TAG, "Drm session requires secure decoder for " + mimeType + ", but "
+                      + "no secure decoder available. Trying to proceed with " + codecInfo.name + ".");
+            }
+          }
+        } catch (DecoderQueryException e) {
+          throwDecoderInitError(new DecoderInitializationException(format, e,
+                  drmSessionRequiresSecureDecoder, DecoderInitializationException.DECODER_QUERY_ERROR));
+        }
+
+        if (codecInfo == null) {
+          throwDecoderInitError(new DecoderInitializationException(format, null,
+                  drmSessionRequiresSecureDecoder,
+                  DecoderInitializationException.NO_SUITABLE_DECODER_ERROR));
+        }
+      }
+
+      if (!shouldInitCodec(codecInfo)) {
+        return;
+      }
+      try {
+        String codecName = codecInfo.name;
+        codecNeedsDiscardToSpsWorkaround = codecNeedsDiscardToSpsWorkaround(codecName, format);
+        codecNeedsFlushWorkaround = codecNeedsFlushWorkaround(codecName);
+        codecNeedsAdaptationWorkaround = codecNeedsAdaptationWorkaround(codecName);
+        codecNeedsEosPropagationWorkaround = codecNeedsEosPropagationWorkaround(codecName);
+        codecNeedsEosFlushWorkaround = codecNeedsEosFlushWorkaround(codecName);
+        codecNeedsEosOutputExceptionWorkaround = codecNeedsEosOutputExceptionWorkaround(codecName);
+        codecNeedsMonoChannelCountWorkaround = codecNeedsMonoChannelCountWorkaround(codecName, format);
+        try {
+          long codecInitializingTimestamp = SystemClock.elapsedRealtime();
+          TraceUtil.beginSection("createCodec:" + codecName);
+          codec = MediaCodec.createByCodecName(codecName);
+          TraceUtil.endSection();
+          TraceUtil.beginSection("configureCodec");
+          configureCodec(codecInfo, codec, format, wrappedMediaCrypto);
+          TraceUtil.endSection();
+          TraceUtil.beginSection("startCodec");
+          codec.start();
+          TraceUtil.endSection();
+          long codecInitializedTimestamp = SystemClock.elapsedRealtime();
+          onCodecInitialized(codecName, codecInitializedTimestamp,
+                  codecInitializedTimestamp - codecInitializingTimestamp);
+          inputBuffers = codec.getInputBuffers();
+          outputBuffers = codec.getOutputBuffers();
+          break;
+        } catch (Exception e) {
+          try {
+            // try next codec in list
+            codecInfo = getNextDecoderInfo();
+            continue;
+          } catch (DecoderQueryException e1) {
+            throwDecoderInitError(new DecoderInitializationException(format, e1,
+                    drmSessionRequiresSecureDecoder, codecName));
+          }
+          throwDecoderInitError(new DecoderInitializationException(format, e,
+                  drmSessionRequiresSecureDecoder, codecName));
+        }
+        codecHotswapDeadlineMs = getState() == STATE_STARTED
+                ? (SystemClock.elapsedRealtime() + MAX_CODEC_HOTSWAP_TIME_MS) : C.TIME_UNSET;
+        inputIndex = C.INDEX_UNSET;
+        outputIndex = C.INDEX_UNSET;
+        waitingForFirstSyncFrame = true;
+        decoderCounters.decoderInitCount++;
+      } catch (ExoPlaybackException epe) {
+        if (selectedItem >= codecs.size()) {
+          // now we tried every codec and no one suits. We can exit...
+          throw epe;
+        }
       }
     }
-
-    if (!shouldInitCodec(codecInfo)) {
-      return;
-    }
-
-    String codecName = codecInfo.name;
-    codecNeedsDiscardToSpsWorkaround = codecNeedsDiscardToSpsWorkaround(codecName, format);
-    codecNeedsFlushWorkaround = codecNeedsFlushWorkaround(codecName);
-    codecNeedsAdaptationWorkaround = codecNeedsAdaptationWorkaround(codecName);
-    codecNeedsEosPropagationWorkaround = codecNeedsEosPropagationWorkaround(codecName);
-    codecNeedsEosFlushWorkaround = codecNeedsEosFlushWorkaround(codecName);
-    codecNeedsEosOutputExceptionWorkaround = codecNeedsEosOutputExceptionWorkaround(codecName);
-    codecNeedsMonoChannelCountWorkaround = codecNeedsMonoChannelCountWorkaround(codecName, format);
-    try {
-      long codecInitializingTimestamp = SystemClock.elapsedRealtime();
-      TraceUtil.beginSection("createCodec:" + codecName);
-      codec = MediaCodec.createByCodecName(codecName);
-      TraceUtil.endSection();
-      TraceUtil.beginSection("configureCodec");
-      configureCodec(codecInfo, codec, format, wrappedMediaCrypto);
-      TraceUtil.endSection();
-      TraceUtil.beginSection("startCodec");
-      codec.start();
-      TraceUtil.endSection();
-      long codecInitializedTimestamp = SystemClock.elapsedRealtime();
-      onCodecInitialized(codecName, codecInitializedTimestamp,
-          codecInitializedTimestamp - codecInitializingTimestamp);
-      inputBuffers = codec.getInputBuffers();
-      outputBuffers = codec.getOutputBuffers();
-    } catch (Exception e) {
-      throwDecoderInitError(new DecoderInitializationException(format, e,
-          drmSessionRequiresSecureDecoder, codecName));
-    }
-    codecHotswapDeadlineMs = getState() == STATE_STARTED
-        ? (SystemClock.elapsedRealtime() + MAX_CODEC_HOTSWAP_TIME_MS) : C.TIME_UNSET;
-    inputIndex = C.INDEX_UNSET;
-    outputIndex = C.INDEX_UNSET;
-    waitingForFirstSyncFrame = true;
-    decoderCounters.decoderInitCount++;
   }
 
   private void throwDecoderInitError(DecoderInitializationException e)
