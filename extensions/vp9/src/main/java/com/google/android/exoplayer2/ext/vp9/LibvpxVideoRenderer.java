@@ -22,6 +22,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.support.annotation.IntDef;
 import android.view.Surface;
+
 import com.google.android.exoplayer2.BaseRenderer;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlaybackException;
@@ -40,6 +41,7 @@ import com.google.android.exoplayer2.util.TraceUtil;
 import com.google.android.exoplayer2.util.Util;
 import com.google.android.exoplayer2.video.VideoRendererEventListener;
 import com.google.android.exoplayer2.video.VideoRendererEventListener.EventDispatcher;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -724,7 +726,9 @@ public final class LibvpxVideoRenderer extends BaseRenderer {
     if (droppedFrames > 0) {
       long now = SystemClock.elapsedRealtime();
       long elapsedMs = now - droppedFrameAccumulationStartTimeMs;
-      eventDispatcher.droppedFrames(droppedFrames, elapsedMs);
+      // TODO implement it here.
+      // At the moment it is not used. Also it should be excluded from the list of added extensions.
+      eventDispatcher.droppedFrames(droppedFrames, elapsedMs, -1);
       droppedFrames = 0;
       droppedFrameAccumulationStartTimeMs = now;
     }

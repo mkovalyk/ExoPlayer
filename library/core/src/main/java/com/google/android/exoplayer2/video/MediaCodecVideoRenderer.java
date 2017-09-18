@@ -108,6 +108,10 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
 
   private long outputStreamOffsetUs;
   private int pendingOutputStreamOffsetCount;
+  private long lastFpsOutput = 0;
+  private int frames;
+  private int averageSum;
+  private int totalCount;
 
   /**
    * @param context A context.
@@ -137,7 +141,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
    *     null if delivery of events is not required.
    * @param eventListener A listener of events. May be null if delivery of events is not required.
    * @param maxDroppedFrameCountToNotify The maximum number of frames that can be dropped between
-   *     invocations of {@link VideoRendererEventListener#onDroppedFrames(int, long)}.
+   *     invocations of {@link VideoRendererEventListener#onDroppedFrames(int, long, int)}.
    */
   public MediaCodecVideoRenderer(Context context, MediaCodecSelector mediaCodecSelector,
       long allowedJoiningTimeMs, Handler eventHandler, VideoRendererEventListener eventListener,
@@ -162,7 +166,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
    *     null if delivery of events is not required.
    * @param eventListener A listener of events. May be null if delivery of events is not required.
    * @param maxDroppedFramesToNotify The maximum number of frames that can be dropped between
-   *     invocations of {@link VideoRendererEventListener#onDroppedFrames(int, long)}.
+   *     invocations of {@link VideoRendererEventListener#onDroppedFrames(int, long, int)}.
    */
   public MediaCodecVideoRenderer(Context context, MediaCodecSelector mediaCodecSelector,
       long allowedJoiningTimeMs, DrmSessionManager<FrameworkMediaCrypto> drmSessionManager,
@@ -542,13 +546,15 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
     earlyUs = (adjustedReleaseTimeNs - systemTimeNs) / 1000;
 
     if (shouldDropOutputBuffer(earlyUs, elapsedRealtimeUs)) {
-      dropOutputBuffer(codec, bufferIndex, presentationTimeUs);
-      return true;
+      renderOutputBufferWithIncreaseDropCount();
+//      dropOutputBuffer(codec, bufferIndex, presentationTimeUs);
+//      return true;
     }
 
     if (Util.SDK_INT >= 21) {
       // Let the underlying framework time the release.
       if (earlyUs < 50000) {
+        pingFps();
         renderOutputBufferV21(codec, bufferIndex, presentationTimeUs, adjustedReleaseTimeNs);
         return true;
       }
@@ -572,6 +578,38 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
 
     // We're either not playing, or it's not time to render the frame yet.
     return false;
+  }
+
+  /**
+   * Render frame but increase dropped frame count to notify if there is something wrong
+   */
+  protected void renderOutputBufferWithIncreaseDropCount() {
+    decoderCounters.droppedOutputBufferCount++;
+    droppedFrames++;
+    consecutiveDroppedFrameCount++;
+    decoderCounters.maxConsecutiveDroppedOutputBufferCount = Math.max(consecutiveDroppedFrameCount,
+            decoderCounters.maxConsecutiveDroppedOutputBufferCount);
+    if (droppedFrames == maxDroppedFramesToNotify) {
+      maybeNotifyDroppedFrames();
+    }
+  }
+
+  /**
+   * Evaluate average FPS that is rendered.
+   */
+  private void pingFps() {
+    if (lastFpsOutput == 0)
+      lastFpsOutput = System.currentTimeMillis();
+
+    frames++;
+
+    if (System.currentTimeMillis() - lastFpsOutput > 1000) {
+      lastFpsOutput = System.currentTimeMillis();
+      averageSum += frames;
+      totalCount++;
+      Log.d(TAG, "FPS: " + frames + "average:" + averageSum / totalCount);
+      frames = 0;
+    }
   }
 
   /**
@@ -730,7 +768,13 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
     if (droppedFrames > 0) {
       long now = SystemClock.elapsedRealtime();
       long elapsedMs = now - droppedFrameAccumulationStartTimeMs;
-      eventDispatcher.droppedFrames(droppedFrames, elapsedMs);
+
+      // Make final copies to ensure the runnable reports the correct values.
+      final int localTotalCount = totalCount;
+      final int localAverageSum = averageSum;
+      if(localTotalCount != 0) {
+        eventDispatcher.droppedFrames(droppedFrames, elapsedMs, localAverageSum / localTotalCount);
+      }
       droppedFrames = 0;
       droppedFrameAccumulationStartTimeMs = now;
     }

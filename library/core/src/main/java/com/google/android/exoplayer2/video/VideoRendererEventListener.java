@@ -19,6 +19,7 @@ import android.os.Handler;
 import android.os.SystemClock;
 import android.view.Surface;
 import android.view.TextureView;
+
 import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.Renderer;
 import com.google.android.exoplayer2.decoder.DecoderCounters;
@@ -66,7 +67,7 @@ public interface VideoRendererEventListener {
    *     last reported (whichever was more recent), and not from when the first of the reported
    *     drops occurred.
    */
-  void onDroppedFrames(int count, long elapsedMs);
+  void onDroppedFrames(int count, long elapsedMs, int averageFps);
 
   /**
    * Called before a frame is rendered for the first time since setting the surface, and each time
@@ -167,14 +168,14 @@ public interface VideoRendererEventListener {
     }
 
     /**
-     * Invokes {@link VideoRendererEventListener#onDroppedFrames(int, long)}.
+     * Invokes {@link VideoRendererEventListener#onDroppedFrames(int, long, int)}.
      */
-    public void droppedFrames(final int droppedFrameCount, final long elapsedMs) {
+    public void droppedFrames(final int droppedFrameCount, final long elapsedMs, final int averageFps) {
       if (listener != null) {
         handler.post(new Runnable()  {
           @Override
           public void run() {
-            listener.onDroppedFrames(droppedFrameCount, elapsedMs);
+            listener.onDroppedFrames(droppedFrameCount, elapsedMs, averageFps);
           }
         });
       }

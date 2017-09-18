@@ -27,6 +27,7 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.TextureView;
+
 import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.audio.AudioRendererEventListener;
 import com.google.android.exoplayer2.decoder.DecoderCounters;
@@ -40,6 +41,7 @@ import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.trackselection.TrackSelector;
 import com.google.android.exoplayer2.util.Util;
 import com.google.android.exoplayer2.video.VideoRendererEventListener;
+
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -871,9 +873,9 @@ public class SimpleExoPlayer implements ExoPlayer {
     }
 
     @Override
-    public void onDroppedFrames(int count, long elapsed) {
+    public void onDroppedFrames(int count, long elapsed, int averageFps) {
       if (videoDebugListener != null) {
-        videoDebugListener.onDroppedFrames(count, elapsed);
+        videoDebugListener.onDroppedFrames(count, elapsed, averageFps);
       }
     }
 
