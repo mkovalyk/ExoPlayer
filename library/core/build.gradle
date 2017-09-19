@@ -38,8 +38,11 @@ android {
         // }
     }
 }
-
+configurations {
+    deployerJars
+}
 dependencies {
+    deployerJars "ar.com.synergian:wagon-git:0.2.5"
     compile 'com.android.support:support-annotations:' + supportLibraryVersion
     androidTestCompile 'com.google.dexmaker:dexmaker:' + dexmakerVersion
     androidTestCompile 'com.google.dexmaker:dexmaker-mockito:' + dexmakerVersion
@@ -52,7 +55,10 @@ ext {
 apply from: '../../javadoc_library.gradle'
 
 ext {
-    releaseArtifact = 'exoplayer-core'
+    releaseVersion = 'r2.5.1'
+    releaseArtifact = 'pixellot-exoplayer-core'
     releaseDescription = 'The ExoPlayer library core module.'
+    groupId = 'com.google.android.exoplayer'
 }
-apply from: '../../publish.gradle'
+apply from: '../../../publish.gradle'
+

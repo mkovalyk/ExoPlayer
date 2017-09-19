@@ -24,9 +24,30 @@ if (project.ext.has("exoplayerPublishEnabled")
         website = 'https://github.com/google/ExoPlayer'
     }
 }
+//apply plugin: 'maven'
+//// don't forget to add path to your local mavenLocal() to local.properties
+//// to upload use - ./gradlew clean uploadArchives
+//Properties properties = new Properties()
+//properties.load(project.rootProject.file('local.properties').newDataInputStream())
+//def pathToLocalRepo = properties.getProperty('localRepo')
+//if (pathToLocalRepo == null) {
+//    pathToLocalRepo = System.getenv("MAVEN_LOCAL")
+//}
+//uploadArchives {
+//    repositories {
+//        mavenDeployer {
+//            repository(url: "file://$pathToLocalRepo")
+//            pom.version = releaseVersion
+//            pom.artifactId = releaseArtifact
+//            pom.groupId = "com.google.android.exoplayer"
+//        }
+//    }
+//}
+
+//uploadArchives.dependsOn("assembleRelease")
 
 def getBintrayRepo() {
     boolean publicRepo = hasProperty('publicRepo') &&
-        property('publicRepo').toBoolean()
+            property('publicRepo').toBoolean()
     return publicRepo ? 'exoplayer' : 'exoplayer-test'
 }

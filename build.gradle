@@ -39,7 +39,7 @@ allprojects {
         }
     }
     project.ext {
-        exoplayerPublishEnabled = true
+        exoplayerPublishEnabled = false
     }
     if (it.hasProperty('externalBuildDir')) {
         if (!new File(externalBuildDir).isAbsolute()) {

@@ -31,9 +31,16 @@ android {
         // }
     }
 }
+configurations {
+    deployerJars
+}
 
 dependencies {
-    compile project(modulePrefix + 'library-core')
+    deployerJars "ar.com.synergian:wagon-git:0.2.5"
+    debugCompile project(modulePrefix + 'library-core')
+//    compile project(modulePrefix + 'library-core')
+    releaseCompile "com.google.android.exoplayer:pixellot-exoplayer-core:r2.5.1"
+//    compile "com.google.android.exoplayer:pixellot-exoplayer-core:r2.5.1"
     compile 'com.android.support:support-annotations:' + supportLibraryVersion
     androidTestCompile 'com.google.dexmaker:dexmaker:' + dexmakerVersion
     androidTestCompile 'com.google.dexmaker:dexmaker-mockito:' + dexmakerVersion
@@ -46,7 +53,9 @@ ext {
 apply from: '../../javadoc_library.gradle'
 
 ext {
-    releaseArtifact = 'exoplayer-hls'
+    releaseVersion = 'r2.5.1'
+    releaseArtifact = 'pixellot-exoplayer-hls'
     releaseDescription = 'The ExoPlayer library HLS module.'
+    groupId = 'com.google.android.exoplayer'
 }
-apply from: '../../publish.gradle'
+apply from: '../../../publish.gradle'
