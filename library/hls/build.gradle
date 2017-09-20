@@ -37,10 +37,8 @@ configurations {
 
 dependencies {
     deployerJars "ar.com.synergian:wagon-git:0.2.5"
-    debugCompile project(modulePrefix + 'library-core')
-//    compile project(modulePrefix + 'library-core')
-    releaseCompile "com.google.android.exoplayer:pixellot-exoplayer-core:r2.5.1"
-//    compile "com.google.android.exoplayer:pixellot-exoplayer-core:r2.5.1"
+//    compile project(modulePrefix + 'library-core') // to work with it locally
+    compile "com.google.android.exoplayer:pixellot-exoplayer-core:r2.5.1" // to upload to server
     compile 'com.android.support:support-annotations:' + supportLibraryVersion
     androidTestCompile 'com.google.dexmaker:dexmaker:' + dexmakerVersion
     androidTestCompile 'com.google.dexmaker:dexmaker-mockito:' + dexmakerVersion
