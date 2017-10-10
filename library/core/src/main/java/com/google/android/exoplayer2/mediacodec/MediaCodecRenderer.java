@@ -356,7 +356,9 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
       if (codecInfo == null) {
         try {
           codecInfo = getNextDecoderInfo();
-          Log.d(TAG, "maybeInitCodec: " + codecInfo.name);
+            if(codecInfo != null) {
+                Log.d(TAG, "maybeInitCodec. Index " + selectedItem + ".Name" + codecInfo.name);
+            }
 //        codecInfo = getDecoderInfo(mediaCodecSelector, format, drmSessionRequiresSecureDecoder);
           if (codecInfo == null && drmSessionRequiresSecureDecoder) {
             // The drm session indicates that a secure decoder is required, but the device does not
@@ -492,6 +494,7 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
   }
 
   protected void releaseCodec() {
+    selectedItem = 0;
     codecHotswapDeadlineMs = C.TIME_UNSET;
     inputIndex = C.INDEX_UNSET;
     outputIndex = C.INDEX_UNSET;
