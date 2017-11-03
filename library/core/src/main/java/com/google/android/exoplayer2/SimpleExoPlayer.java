@@ -18,6 +18,7 @@ package com.google.android.exoplayer2;
 import android.annotation.TargetApi;
 import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
+import android.media.MediaFormat;
 import android.media.PlaybackParams;
 import android.os.Handler;
 import android.os.Looper;
@@ -99,6 +100,7 @@ public class SimpleExoPlayer implements ExoPlayer {
   private Format videoFormat;
   private Format audioFormat;
 
+  private MediaFormat outputVideoMediaFormat;
   private Surface surface;
   private boolean ownsSurface;
   @C.VideoScalingMode
@@ -388,7 +390,10 @@ public class SimpleExoPlayer implements ExoPlayer {
     player.sendMessages(messages);
   }
 
-  /**
+    public MediaFormat getVideoOutputFormat() {
+        return outputVideoMediaFormat;
+    }
+    /**
    * Returns the audio volume, with 0 being silence and 1 being unity gain.
    */
   public float getVolume() {
@@ -881,14 +886,15 @@ public class SimpleExoPlayer implements ExoPlayer {
 
     @Override
     public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees,
-        float pixelWidthHeightRatio) {
+        float pixelWidthHeightRatio, MediaFormat mediaFormat) {
+      outputVideoMediaFormat = mediaFormat;
       for (VideoListener videoListener : videoListeners) {
         videoListener.onVideoSizeChanged(width, height, unappliedRotationDegrees,
             pixelWidthHeightRatio);
       }
       if (videoDebugListener != null) {
         videoDebugListener.onVideoSizeChanged(width, height, unappliedRotationDegrees,
-            pixelWidthHeightRatio);
+            pixelWidthHeightRatio, mediaFormat);
       }
     }
 

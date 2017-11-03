@@ -112,6 +112,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
   private int frames;
   private int averageSum;
   private int totalCount;
+  private MediaFormat videoOutputFormat;
 
   /**
    * @param context A context.
@@ -454,6 +455,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
 
   @Override
   protected void onOutputFormatChanged(MediaCodec codec, MediaFormat outputFormat) {
+    videoOutputFormat = outputFormat;
     boolean hasCrop = outputFormat.containsKey(KEY_CROP_RIGHT)
         && outputFormat.containsKey(KEY_CROP_LEFT) && outputFormat.containsKey(KEY_CROP_BOTTOM)
         && outputFormat.containsKey(KEY_CROP_TOP);
@@ -749,7 +751,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
         || reportedUnappliedRotationDegrees != currentUnappliedRotationDegrees
         || reportedPixelWidthHeightRatio != currentPixelWidthHeightRatio)) {
       eventDispatcher.videoSizeChanged(currentWidth, currentHeight, currentUnappliedRotationDegrees,
-          currentPixelWidthHeightRatio);
+          currentPixelWidthHeightRatio, videoOutputFormat);
       reportedWidth = currentWidth;
       reportedHeight = currentHeight;
       reportedUnappliedRotationDegrees = currentUnappliedRotationDegrees;
@@ -760,7 +762,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
   private void maybeRenotifyVideoSizeChanged() {
     if (reportedWidth != Format.NO_VALUE || reportedHeight != Format.NO_VALUE) {
       eventDispatcher.videoSizeChanged(reportedWidth, reportedHeight,
-          reportedUnappliedRotationDegrees, reportedPixelWidthHeightRatio);
+          reportedUnappliedRotationDegrees, reportedPixelWidthHeightRatio, videoOutputFormat);
     }
   }
 

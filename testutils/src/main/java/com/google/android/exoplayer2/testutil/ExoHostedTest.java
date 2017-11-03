@@ -15,6 +15,7 @@
  */
 package com.google.android.exoplayer2.testutil;
 
+import android.media.MediaFormat;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.util.Log;
@@ -325,7 +326,7 @@ public abstract class ExoHostedTest implements HostedTest, Player.EventListener,
 
   @Override
   public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees,
-      float pixelWidthHeightRatio) {
+      float pixelWidthHeightRatio, MediaFormat mediaFormat) {
     // Do nothing.
   }
 

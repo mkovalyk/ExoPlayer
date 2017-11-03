@@ -15,6 +15,7 @@
  */
 package com.google.android.exoplayer2.video;
 
+import android.media.MediaFormat;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.view.Surface;
@@ -87,7 +88,7 @@ public interface VideoRendererEventListener {
    *     content.
    */
   void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees,
-      float pixelWidthHeightRatio);
+      float pixelWidthHeightRatio, MediaFormat mediaFormat);
 
   /**
    * Called when a frame is rendered for the first time since setting the surface, and when a frame
@@ -182,16 +183,16 @@ public interface VideoRendererEventListener {
     }
 
     /**
-     * Invokes {@link VideoRendererEventListener#onVideoSizeChanged(int, int, int, float)}.
+     * Invokes {@link VideoRendererEventListener#onVideoSizeChanged(int, int, int, float, MediaFormat)}.
      */
     public void videoSizeChanged(final int width, final int height,
-        final int unappliedRotationDegrees, final float pixelWidthHeightRatio) {
+                                 final int unappliedRotationDegrees, final float pixelWidthHeightRatio, final MediaFormat mediaFormat) {
       if (listener != null) {
         handler.post(new Runnable()  {
           @Override
           public void run() {
             listener.onVideoSizeChanged(width, height, unappliedRotationDegrees,
-                pixelWidthHeightRatio);
+                pixelWidthHeightRatio, mediaFormat);
           }
         });
       }
