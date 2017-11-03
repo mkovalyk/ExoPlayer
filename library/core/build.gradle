@@ -55,7 +55,7 @@ ext {
 apply from: '../../javadoc_library.gradle'
 
 ext {
-    releaseVersion = 'r2.5.3.1'
+    releaseVersion = 'r2.5.3.2'
     releaseArtifact = 'pixellot-exoplayer-core'
     releaseDescription = 'The ExoPlayer library core module.'
     groupId = 'com.google.android.exoplayer'
